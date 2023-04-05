@@ -1,0 +1,104 @@
+//change these values to match the queue name and date range
+//for the interactions that you wish to delete
+var queueNames = ["TestQueue1", "TestQueue2"];
+var today = new Date().toISOString().slice(0, 10);
+var dateRange = today + "T00:00:00.000Z/" + today + "T23:59:59.999Z";
+
+// Don't change anything below
+
+//use the session to interface with the API
+var routingApi = new platformClient.RoutingApi();
+var analyticsApi = new platformClient.AnalyticsApi();
+var conversationsApi = new platformClient.ConversationsApi();
+
+console.log("Getting the " + queueNames + " queues");
+
+var queuePromises = queueNames.map(function(queueName) {
+  var opts = { 
+    'pageSize': 25,
+    'pageNumber': 1,
+    'sortBy': "name",
+    'name': queueName,
+    'id': [],
+    'divisionId': []
+  };
+
+  return routingApi.getRoutingQueues(opts);
+});
+
+Promise.all(queuePromises)
+  .then(function(queueDataArray) {
+    var queueIds = [];
+    queueDataArray.forEach(function(queueData) {
+      if ( queueData.entities !== undefined && queueData.entities.length === 1 ) {
+        console.log("The ID for the " + queueData.entities[0].name + " queue is: " + queueData.entities[0].id);
+        queueIds.push(queueData.entities[0].id);
+      }
+    });
+
+    if ( queueIds.length > 0 ) {
+      var queryBody = {
+        "interval": dateRange,
+        "order": "asc",
+        "orderBy": "conversationStart",
+        "paging": {
+          "pageSize": 100,
+          "pageNumber": 1
+        },
+        "segmentFilters": [
+          {
+            "type": "or",
+            "predicates": queueIds.map(function(queueId) {
+              return {
+                "type": "dimension",
+                "dimension": "queueId",
+                "operator": "matches",
+                "value": queueId
+              }
+            })
+          }
+        ],
+        "conversationFilters": [
+          {
+            "type": "or",
+            "predicates": [
+              {
+                "type": "dimension",
+                "dimension": "conversationEnd",
+                "operator": "notExists",
+                "value": null
+              }
+            ]
+          }
+        ]
+      };
+
+      analyticsApi.postAnalyticsConversationsDetailsQuery(queryBody)
+        .then(function(data) {
+          console.log("postAnalyticsConversationsDetailsQuery success! data: " + JSON.stringify(data, null, 2));
+          if ( data.conversations !== undefined ) {
+            data.conversations.forEach(function(item, index) {
+              console.log("deleting conversation: " + item.conversationId);
+              conversationsApi.postConversationDisconnect(item.conversationId)
+              .then(function(data) {
+                console.log("postConversationDisconnect success! data: " + JSON.stringify(data, null, 2));
+              })
+              .catch(function(err) {
+                console.log('There was a failure calling postConversationDisconnect');
+                console.error(err);
+              });
+            })
+          } else {
+            console.log('No conversations to disconnect');
+          }
+        })
+        .catch(function(err) {
+          console.log('There was a failure calling postAnalyticsConversationsDetailsQuery');
+          console.error(err);
+        });
+    }
+  })
+  .catch(function(err) {
+    console.log('There was a failure calling getRoutingQueues');
+    console.error(err);
+  });
