@@ -1,6 +1,6 @@
 //change these values to match the queue name and date range
 //for the interactions that you wish to delete
-var queueNames = ["TestQueue1", "TestQueue2"];
+var queueNames = ["FL UK Vin Billing Inquiries", "FL UK Vin Order Status", "FL UK Vin Retention", "FL UK Vin Returns", "JF UK Vin Billing Inquiries", "JF UK Vin Order Status", "JF UK Vin Retention", "JF UK Vin Returns", "SXF NL Vin Billing Inquiries", "SXF NL Vin Order Status", "SXF NL Vin Retention", "SXF NL Vin Returns", "SXF UK Vin Billing Inquiries", "SXF UK Vin Order Status", "SXF UK Vin Retention", "SXF UK Vin Returns"];
 var today = new Date().toISOString().slice(0, 10);
 var dateRange = today + "T00:00:00.000Z/" + today + "T23:59:59.999Z";
 
